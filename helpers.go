@@ -2,10 +2,11 @@ package ssz
 
 import (
 	"bytes"
-	"crypto/sha256"
 	"fmt"
 	"math"
 	"reflect"
+
+	"github.com/minio/sha256-simd"
 )
 
 var (
