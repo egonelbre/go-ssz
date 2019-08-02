@@ -14,15 +14,14 @@ var (
 	BytesPerChunk = 32
 	// BytesPerLengthOffset defines a constant for off-setting serialized chunks.
 	BytesPerLengthOffset = uint64(4)
-	zeroHashes           = make([][]byte, 100)
+	zeroHashes           = make([][32]byte, 100)
 )
 
 func init() {
-	zeroHashes[0] = make([]byte, 32)
 	for i := 1; i < 100; i++ {
-		leaf := append(zeroHashes[i-1], zeroHashes[i-1]...)
+		leaf := append(zeroHashes[i-1][:], zeroHashes[i-1][:]...)
 		result := hash(leaf)
-		zeroHashes[i] = result[:]
+		copy(zeroHashes[i][:], result[:])
 	}
 }
 
@@ -91,7 +90,7 @@ func bitwiseMerkleize(chunks [][]byte, limit uint64, hasLimit bool) ([32]byte, e
 		return [32]byte{}, fmt.Errorf("chunk count = %d cannot be greater than padding = %d", count, padding)
 	}
 	if padding == 0 {
-		return toBytes32(zeroHashes[0]), nil
+		return zeroHashes[0], nil
 	}
 
 	depth := uint64(bitLength(0))
@@ -106,11 +105,11 @@ func bitwiseMerkleize(chunks [][]byte, limit uint64, hasLimit bool) ([32]byte, e
 	}
 
 	if 1<<depth != count {
-		mergeChunks(layers, zeroHashes[0], count, count, depth)
+		mergeChunks(layers, zeroHashes[0][:], count, count, depth)
 	}
 
 	for i := depth; i < maxDepth; i++ {
-		res := hash(append(layers[i], zeroHashes[i]...))
+		res := hash(append(layers[i], zeroHashes[i][:]...))
 		layers[i+1] = res[:]
 	}
 
@@ -122,7 +121,7 @@ func mergeChunks(layers [][]byte, currentRoot []byte, i, count, depth uint64) {
 	for {
 		if i&(1<<j) == 0 {
 			if i == count && j < depth {
-				res := hash(append(currentRoot[:], zeroHashes[j]...))
+				res := hash(append(currentRoot[:], zeroHashes[j][:]...))
 				currentRoot = res[:]
 			} else {
 				break
