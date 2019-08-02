@@ -109,7 +109,7 @@ func bitwiseMerkleize(chunks [][]byte, limit uint64, hasLimit bool) ([32]byte, e
 	}
 
 	for i := depth; i < maxDepth; i++ {
-		res := hash(append(layers[i], zeroHashes[i][:]...))
+		res := hash2(layers[i], zeroHashes[i][:])
 		layers[i+1] = res[:]
 	}
 
@@ -121,13 +121,13 @@ func mergeChunks(layers [][]byte, currentRoot []byte, i, count, depth uint64) {
 	for {
 		if i&(1<<j) == 0 {
 			if i == count && j < depth {
-				res := hash(append(currentRoot[:], zeroHashes[j][:]...))
+				res := hash2(currentRoot[:], zeroHashes[j][:])
 				currentRoot = res[:]
 			} else {
 				break
 			}
 		} else {
-			res := hash(append(layers[j], currentRoot[:]...))
+			res := hash2(layers[j], currentRoot[:])
 			currentRoot = res[:]
 		}
 		j++
@@ -145,7 +145,16 @@ func bitLength(n uint64) uint64 {
 // Given a Merkle root root and a length length ("uint256" little-endian serialization)
 // return hash(root + length).
 func mixInLength(root [32]byte, length []byte) [32]byte {
-	return hash(append(root[:], length...))
+	var hash [32]byte
+	h := sha256.New()
+	h.Write(root[:])
+	h.Write(length)
+	// The hash interface never returns an error, for that reason
+	// we are not handling the error below. For reference, it is
+	// stated here https://golang.org/pkg/hash/#Hash
+	// #nosec G104
+	h.Sum(hash[:0])
+	return hash
 }
 
 // Instantiates a reflect value which may not have a concrete type to have a concrete type
@@ -178,4 +187,18 @@ func toBytes32(x []byte) [32]byte {
 // hash defines a function that returns the sha256 hash of the data passed in.
 func hash(data []byte) [32]byte {
 	return sha256.Sum256(data)
+}
+
+// hash2 hashes two slices together
+func hash2(x, y []byte) [32]byte {
+	var hash [32]byte
+	h := sha256.New()
+	h.Write(x)
+	h.Write(y)
+	// The hash interface never returns an error, for that reason
+	// we are not handling the error below. For reference, it is
+	// stated here https://golang.org/pkg/hash/#Hash
+	// #nosec G104
+	h.Sum(hash[:0])
+	return hash
 }
